@@ -13,6 +13,7 @@ struct State
 {
     Pose pose;
     float speed; // in meters per second
+    float time;  // in seconds
 };
 
 struct Node
@@ -22,7 +23,7 @@ struct Node
 };
 
 constexpr float YAW_CHANGE{0.1F}; // in radians
-constexpr float TIME_DELTA{0.1F};  // in seconds
+constexpr float TIME_DELTA{0.1F}; // in seconds
 constexpr std::int32_t NUM_PREDICTED_STATES{10};
 constexpr std::int32_t NUM_PREDICTED_STATES_2{NUM_PREDICTED_STATES / 2};
 
@@ -44,6 +45,8 @@ State predictState(const State state, const float delta_time)
     predicted_state.pose.x = state.pose.x + dx;
     predicted_state.pose.y = state.pose.y + dy;
 
+    predicted_state.time = state.time + delta_time;
+
     // Keep the yaw and speed unchanged
     predicted_state.pose.yaw = state.pose.yaw;
     predicted_state.speed = state.speed;
@@ -51,19 +54,24 @@ State predictState(const State state, const float delta_time)
     return predicted_state;
 }
 
-std::vector<Node> predictNodes(const State &state, const float delta_time)
+std::vector<Node> predictNodes(const Node &node, const float delta_time)
 {
     std::vector<Node> nodes{};
     for (std::int32_t i = -NUM_PREDICTED_STATES_2; i < NUM_PREDICTED_STATES_2; ++i)
     {
         Node next{};
-        next.state = predictState(applyDeltaYaw(state, i * YAW_CHANGE), TIME_DELTA);
+        next.state = predictState(applyDeltaYaw(node.state, i * YAW_CHANGE), TIME_DELTA);
         nodes.emplace_back(std::move(next));
     }
     return nodes;
 }
 
-void drawNode(Node node, sciplot::Plot2D &plot, const std::string& label)
+std::vector<Node> predictNodesMaxTime()
+{
+    return {};
+}
+
+void drawNode(Node node, sciplot::Plot2D &plot, const std::string &label)
 {
     constexpr float ARROW_LENGTH{0.03F};
     const auto &pose = node.state.pose;
@@ -76,7 +84,7 @@ int main(int argc, char **argv)
 {
     Node root{};
     root.state.speed = 0.3;
-    root.nodes = predictNodes(root.state, TIME_DELTA);
+    root.nodes = predictNodes(root, TIME_DELTA);
     std::cout << root.nodes.size();
 
     using namespace sciplot;
@@ -100,7 +108,8 @@ int main(int argc, char **argv)
     //     .displayExpandWidthBy(2);
 
     drawNode(root, plot, "root");
-    for(const auto& node: root.nodes) {
+    for (const auto &node : root.nodes)
+    {
         drawNode(node, plot, "child1");
     }
 
