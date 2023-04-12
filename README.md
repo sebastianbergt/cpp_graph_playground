@@ -1,6 +1,6 @@
 # cpp_graph_playground
 
-Simple C++ example for quick diagramming with sciplot.
+Simple C++ example for quick diagramming with [sciplot](https://github.com/sciplot/sciplot).
 
 You only need to be sure gnuplot is installed on your system.
 
