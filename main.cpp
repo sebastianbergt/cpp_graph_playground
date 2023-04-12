@@ -66,25 +66,40 @@ std::vector<Node> predictNodes(const Node &node, const float delta_time)
     return nodes;
 }
 
-std::vector<Node> predictNodesMaxTime()
+std::vector<Node> predictNodesMaxTime(const Node &node, const float delta_time, const float remaining_time)
 {
-    return {};
+    const auto time_left = remaining_time - delta_time;
+    if(time_left < 0.0) {
+        return {};
+    }
+    auto nodes = predictNodes(node, delta_time);
+    for(auto& child_node: nodes) {
+        child_node.nodes = predictNodesMaxTime(child_node, delta_time, time_left);
+    }
+    return nodes;
 }
 
-void drawNode(Node node, sciplot::Plot2D &plot, const std::string &label)
+void drawSingleNode(const Node node, sciplot::Plot2D &plot)
 {
     constexpr float ARROW_LENGTH{0.03F};
     const auto &pose = node.state.pose;
     std::vector<float> x{pose.x, pose.x + std::cos(pose.yaw) * ARROW_LENGTH};
     std::vector<float> y{pose.y, pose.y + std::sin(pose.yaw) * ARROW_LENGTH};
-    plot.drawCurve(x, y).label(label);
+    plot.drawCurve(x, y);
+}
+
+void drawNodeRecursively(const Node node, sciplot::Plot2D &plot) {
+    drawSingleNode(node, plot);
+    for(auto& child_node: node.nodes) {
+        drawNodeRecursively(child_node, plot);
+    }
 }
 
 int main(int argc, char **argv)
 {
     Node root{};
-    root.state.speed = 0.3;
-    root.nodes = predictNodes(root, TIME_DELTA);
+    root.state.speed = 0.5;
+    root.nodes = predictNodesMaxTime(root, TIME_DELTA, 3*TIME_DELTA);
     std::cout << root.nodes.size();
 
     using namespace sciplot;
@@ -99,7 +114,7 @@ int main(int argc, char **argv)
 
     // Set the x and y ranges
     plot.xrange(-0.05, 0.2);
-    plot.yrange(-0.05, 0.2);
+    plot.yrange(-0.2, 0.2);
 
     // Set the legend to be on the bottom along the horizontal
     plot.legend().hide();
@@ -107,11 +122,7 @@ int main(int argc, char **argv)
     //     .displayHorizontal()
     //     .displayExpandWidthBy(2);
 
-    drawNode(root, plot, "root");
-    for (const auto &node : root.nodes)
-    {
-        drawNode(node, plot, "child1");
-    }
+    drawNodeRecursively(root, plot);
 
     // Create figure to hold plot
     Figure fig = {{plot}};
